@@ -1,4 +1,10 @@
 // 2D Maze Game added
+/*
+Made By:
+1. Gaurav Baweja
+2. Jagrit Nokwal
+3. Mukul Tayal
+*/
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
