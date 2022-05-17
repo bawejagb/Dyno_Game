@@ -1,2 +1,2 @@
-# Maze_Game_Project
-2D Maze Game Project in C++ using Open GL
+# Dyno_Game
+2D Dynosaur Game Project in C++ using Open GL
