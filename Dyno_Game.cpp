@@ -1,295 +1,429 @@
-#include <iostream>
+#include <GLUT/glut.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <cmath>
-#include <GLUT/glut.h>
+#include <string.h>
+
+void drawGround();
+void myTimer(int);
+void myTimerDoNothing(int);
+void jumpFunc();
+void dontDoAnythingIdle();
+void resetGame();
+void drawString();
+void Draw_Figure();
+void drawGround();
+void drawTree();
 
 
-static int animationPeriod = 4;
-static int isAnimate = 0;
+#define PI 3.1415
+#define theta 90.0f
 
-const int fact = 3;
-const int x = 80;
-const double DEG2RAD = 3.1415926535897932384/180;
-
-static double w = 200;
-static int flag = 0;
-static int walk = 0;
-static int rst = 0;
-static int score = 0;
-static int HiScore = 0;
-static int x_ = 2500;
-using namespace std;
-
-void reset(){
-    w = 200;
-    flag = 0;
-    walk = 0;
-    x_ = 2500;
-    animationPeriod = 4;
-    isAnimate = 0;
-    rst=0;
-    score=0;
-}
-void scoreDisplay(int x, int y, std::string s)
-{
-      int len, i;
-       glRasterPos2f(x,y);
-       len=s.length();
-       for (i = 0; i < len; i++)
-         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,s[i]);
-}
-
-void animate(int value){
-    if(isAnimate){
-        glutPostRedisplay();
-        glutTimerFunc(animationPeriod, animate, 1);
-    }
-}
-
-void keyInput(unsigned char key , int x, int y){
-    switch(key){
-    case 27:
-        exit(0);
-    case ' ':
-        if(rst) reset();
-        if(isAnimate){
-            if(flag==0 && w <= 200.0){
-                flag  = 1;
-            }
-            glutPostRedisplay();
-            }
-        else{
-            isAnimate = 1;
-            animate(1);
-        }
-        break;
-    }
-}
-bool collision(double len){
-    if(abs(157 + x - (x_ + x + 50)) <= 100 + x){
-        if(5 * fact + w <= 550 * len)return 1;
-        return 0;
-    }
-    return 0;
-}
-
-//void specialKeyInput(int key , int x , int y ){
-//    if( key == ' ' && flag==0 && w <= 200.0){
-//        flag  = 1;
-//    }
-//    glutPostRedisplay();
-//}
-
-void draw_circle(double theta, double inner_radius, double outer_radius, int x, int y, int sin_sign = 1, int cos_sign = 1){
-   glBegin(GL_POINTS);
-   glColor3f(0.0/ 255.0, 0.0/ 255.0, 0.0/ 255.0);
-   for(double r = outer_radius; r >= inner_radius; r -= 3.0){
-        for(double i = 0; i < theta ; i++){
-          double degInRad = i * DEG2RAD;
-          glVertex2f( cos_sign * cos(degInRad) * r + x , sin_sign * sin(degInRad) * r + y  );
-       }
-   }
-   glEnd();
-}
-
-void generate_tree(int x_, double len){
-    int x = 30;
-    glColor3f((0) / 255.0, (0) / 255.0, (0) / 255.0);
-    glBegin(GL_POLYGON);
-        glVertex2f(x_, 200 * len);
-        glVertex2f(x_ + x, 200 * len);
-        glVertex2f(x_ + x, 550 * len);
-        glVertex2f(x_, 550 * len);
-    glEnd();
-
-    draw_circle(180.0, 0.0, x  / 2, x_ + x / 2, 550 * len);
-
-    glBegin(GL_POLYGON);
-        glVertex2f(x_ + x + 25, 300 * len);
-        glVertex2f(x_ + x + 50, 300 * len);
-        glVertex2f(x_ + x + 50, 500 * len);
-        glVertex2f(x_ + x + 25, 500 * len);
-    glEnd();
-
-    draw_circle(180.0, 0.0, 25.0 / 2, x_ + x + 75.0 / 2, 500 * len);
-
-    glBegin(GL_POLYGON);
-        glVertex2f(x_ - 25, 300 * len);
-        glVertex2f(x_ - 50, 300 * len);
-        glVertex2f(x_ - 50, 500 * len);
-        glVertex2f(x_ - 25, 500 * len);
-    glEnd();
-
-    draw_circle(180.0, 0.0, 25.0 / 2, x_ - 75.0 / 2, 500 * len);
-    draw_circle(90.0, 25, 50, x_ + x, 300 * len, -1);
-    draw_circle(90.0, 25, 50, x_, 300 * len, -1, -1);
-}
-
-void render( void ){
-    glClear(GL_COLOR_BUFFER_BIT);
-    if(rst) scoreDisplay(900, 1000, "GAME OVER");
-    scoreDisplay(1800,1500,"HI  : "+to_string(HiScore));
-    scoreDisplay(1800,1420,"CR : "+to_string(score));
-    glPointSize(2);
-    glBegin(GL_POINTS);
-        glColor3f((0) / 255.0, (0) / 255.0, (0) / 255.0);
-        for(int i = 0; i < 100; i++){
-            glVertex2f(rand() % 2000, 200);
-            glVertex2f((rand() + 31) % 2000, 150);
-            glVertex2f(rand() % 2000, 100);
-        }
-    glEnd();
-    //Generate tree in game
-    generate_tree(x_, 1.0);
-
-
-    if(x_>= 0)
-        x_ -= 10;
-    else{
-        x_ = 2000 + rand()%400;
-        score++;
-        HiScore = max(score,HiScore);
-        //cout << score<< endl;
-    }
+bool startGame = false;
+bool gameRunning = false;
+int max_score=0;
+float gameSpeed = 1;
+int timerTime = 1;
+int score = 0;
+float mX = 0;
+float dinoVerticalPosition = 0;
+float dinoPoints[2][33] = {{6, 6, 7, 7, 5, 5, 3, 3, 4, 4, 2, 2, 1.5, -1, 2, 3, 5, 7, 7, 12, 12, 9, 9, 11, 11, 8, 8, 10, 10, 9, 9, 8, 8},
+    {3, 1, 1, 0, 0, 3, 3, 1, 1, 0, 0, 3, 6, 10, 9, 8, 8, 10, 14.7, 15, 11, 11, 10, 10, 9, 9, 8, 8, 6, 6, 7, 7, 5}};
+float tempDinoPoints[2][33] = {{6, 6, 7, 7, 5, 5, 3, 3, 4, 4, 2, 2, 1.5, -1, 2, 3, 5, 7, 7, 12, 12, 9, 9, 11, 11, 8, 8, 10, 10, 9, 9, 8, 8},
+                               {3, 1, 1, 0, 0, 3, 3, 1, 1, 0, 0, 3, 6, 10, 9, 8, 8, 10, 14.7, 15, 11, 11, 10, 10, 9, 9, 8, 8, 6, 6, 7, 7, 5}};
+float dinoEye[2] = {8, 12};
+float tempDinoEye[2] = {8, 12};
+bool rst=0;
+int treeLastPointPosition = 128;
+float treePoints[2][16] = {{125, 125, 122, 122, 123, 123, 125, 125, 128, 128, 130, 130, 131, 131, 128, 128},
+                           {0, 8, 8, 12, 12, 9, 9, 13, 13, 8, 8, 11, 11, 7, 7, 0}};
+int leg_stay_count=0;
+float dinoRunningLegs = false;
+void myTimerDoNothing(int){
     
-    glLineWidth(2);
-    glBegin(GL_LINES);
-        glColor3f((0) / 255.0, (0) / 255.0, (0) / 255.0);
-        glVertex2f(0, 250);
-        glVertex2f(2000, 250);
-    glEnd();
+}
+void drawString(float x, float y, float z, char *string)
+{
+    glRasterPos3f(x, y, z);
 
-    glLineWidth(10);
-    glBegin(GL_LINES);
-        glColor3f(0 / 255.0, 0 / 255.0, 0 / 255.0);
-
-        glVertex2f(10 + x, 75 * fact + w);
-        glVertex2f(10 + x, 45 * fact + w);
-        glVertex2f(15 + x, 65 * fact + w);
-        glVertex2f(15 + x, 40 * fact + w);
-        glVertex2f(20 + x, 60 * fact + w);
-        glVertex2f(20 + x, 35 * fact + w);
-        glVertex2f(25 + x, 55 * fact + w);
-        glVertex2f(25 + x, 35 * fact + w);
-        glVertex2f(30 + x, 55 * fact + w);
-        glVertex2f(30 + x, 35 * fact + w);
-        glVertex2f(35 + x, 55 * fact + w);
-        glVertex2f(35 + x, 25 * fact + w);
-        glVertex2f(40 + x, 60 * fact + w);
-        glVertex2f(40 + x, 5 * fact + w-walk);
-        glVertex2f(45 + x, 65 * fact + w);
-        glVertex2f(45 + x, 15 * fact + w);
-        glVertex2f(45 + x, 10 * fact + w-walk);
-        glVertex2f(45 + x, 5 * fact + w-walk);
-        glVertex2f(50 + x, 10 * fact + w-walk);
-        glVertex2f(50 + x, 5 * fact + w-walk);
-        glVertex2f(55 + x, 10 * fact + w-walk);
-        glVertex2f(55 + x, 5 * fact + w-walk);
-        glVertex2f(50 + x, 65 * fact + w);
-        glVertex2f(50 + x, 20 * fact + w);
-        glVertex2f(55 + x, 70 * fact + w);
-        glVertex2f(55 + x, 25 * fact + w);
-        glVertex2f(63 + x, 75 * fact + w);
-        glVertex2f(63 + x, 20 * fact + w);
-        glVertex2f(70 + x, 115 * fact + w);
-        glVertex2f(70 + x, 5 * fact + w+walk);
-        glVertex2f(78 + x, 120 * fact + w);
-        glVertex2f(78 + x, 25 * fact + w);
-        glVertex2f(78 + x, 10 * fact + w+walk);
-        glVertex2f(78 + x, 5 * fact + w+walk);
-        glVertex2f(85 + x, 10 * fact + w+walk);
-        glVertex2f(85 + x, 5 * fact + w+walk);
-        glVertex2f(87 + x, 120 * fact + w);
-        glVertex2f(87 + x, 115 * fact + w);
-        glVertex2f(87 + x, 110 * fact + w);
-        glVertex2f(87 + x, 30 * fact + w);
-        glVertex2f(95 + x, 120 * fact + w);
-        glVertex2f(95 + x, 35 * fact + w);
-        glVertex2f(103 + x, 120 * fact + w);
-        glVertex2f(103 + x, 75 * fact + w);
-        glVertex2f(103 + x, 65 * fact + w);
-        glVertex2f(103 + x, 60 * fact + w);
-        glVertex2f(110 + x, 65 * fact + w);
-        glVertex2f(110 + x, 60 * fact + w);
-        glVertex2f(118 + x, 65 * fact + w);
-        glVertex2f(118 + x, 55 * fact + w);
-        glVertex2f(112 + x, 120 * fact + w);
-        glVertex2f(112 + x, 85 * fact + w);
-        glVertex2f(112 + x, 80 * fact + w);
-        glVertex2f(112 + x, 75 * fact + w);
-        glVertex2f(120 + x, 120 * fact + w);
-        glVertex2f(120 + x, 85 * fact + w);
-        glVertex2f(120 + x, 80 * fact + w);
-        glVertex2f(120 + x, 75 * fact + w);
-        glVertex2f(126 + x, 120 * fact + w);
-        glVertex2f(126 + x, 85 * fact + w);
-        glVertex2f(126 + x, 80 * fact + w);
-        glVertex2f(126 + x, 75 * fact + w);
-        glVertex2f(135 + x, 120 * fact + w);
-        glVertex2f(135 + x, 85 * fact + w);
-        glVertex2f(135 + x, 80 * fact + w);
-        glVertex2f(135 + x, 75 * fact + w);
-        glVertex2f(142 + x, 120 * fact + w);
-        glVertex2f(142 + x, 85 * fact + w);
-        glVertex2f(150 + x, 120 * fact + w);
-        glVertex2f(150 + x, 85 * fact + w);
-        glVertex2f(157 + x, 115 * fact + w);
-        glVertex2f(157 + x, 85 * fact + w);
-
-    glEnd();
-
-    if(isAnimate && collision(1.0)){
-        //reset();
-        isAnimate=0;
-        rst=1;
-        flag=0;
-        scoreDisplay(900, 1000, "GAME OVER");
-        //cout << HiScore<< endl;
+    for (char *c = string; *c != '\0'; c++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *c); // Updates the position
     }
-    if( w <=200){
-        if(walk==-20 )
-            walk = 20;
-        else{
-            walk = -20;
-        }
-    }
-    else{
-        walk = 0;
-    }
-
-    if(flag==1){
-        if(w<=1000 ){
-            w = w + 20;
-        }
-        else {
-            flag = 0;
-        }
-    }
-    else if(w >= 200 )
-        w = w - 20;
-    glFlush();
 }
 
+// void beginText()
+// {
+//    glMatrixMode(GL_PROJECTION);
 
-void setup(void){
-    glClearColor(1.0, 1.0, 1.0, 0.0);
+//    // Save the current projection matrix
+//    glPushMatrix();
+
+//    // Make the current matrix the identity matrix
+//    glLoadIdentity();
+
+//    // Set the projection (to 2D orthographic)
+//    gluOrtho2D(0, width, 0, height);
+
+//    glMatrixMode(GL_MODELVIEW);
+// }
+
+/**
+ * End the state for text
+ */
+// void endText()
+// {
+//    glMatrixMode(GL_PROJECTION);
+
+//    // Restore the original projection matrix
+//    glPopMatrix();
+
+//    glMatrixMode(GL_MODELVIEW);
+// }
+
+void Draw_Figure()
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0, 0.0, 0.0);
+
+    // beginText();
+
+    // Render the text
+    if (!startGame)
+    {
+        char snum[10];
+        char scoreString2[30] = "Max Score :: ";
+        // convert 123 to string [buf]
+        // itoa(score, snum, 10)
+        snprintf(snum, sizeof(snum), "%d", max_score);
+        strcat(scoreString2, snum);
+
+        drawString(70.0, 90.0, 0.0, scoreString2);
+        char scoreString[30] = "Score :: ";
+        // convert 123 to string [buf]
+        // itoa(score, snum, 10)
+        snprintf(snum, sizeof(snum), "%d", score);
+        strcat(scoreString, snum);
+
+        drawString(70.0, 80.0, 0.0, scoreString);
+        char *p = (char *)"Press Up Arrow to start game";
+        char *u = (char *)"Made By : Jagrit Nokwal, Gaurav Baweja, Mukul Tayal";
+        drawString(30.0, 50.0, 0.0, p);
+        drawString(30.0, 5.0, 0.0, u);
+        rst=0;
+    }
+    else
+    {
+        //   std::string str = std::to_string(sco);
+        // std::string s = std::to_string(42);
+        // std::string str("Test string");
+        // std::string result;
+        char snum[10];
+        char scoreString2[30] = "Max Score :: ";
+        // convert 123 to string [buf]
+        // itoa(score, snum, 10)
+        snprintf(snum, sizeof(snum), "%d", max_score);
+        strcat(scoreString2, snum);
+
+        drawString(70.0, 90.0, 0.0, scoreString2);
+        char scoreString[30] = "Score :: ";
+        // convert 123 to string [buf]
+        // itoa(score, snum, 10)
+        snprintf(snum, sizeof(snum), "%d", score);
+        strcat(scoreString, snum);
+
+        drawString(70.0, 80.0, 0.0, scoreString);
+    }
+
+    // Set things up for normal rendering
+    // endText();
+
+    // float dinoEye[2] = {13,13,12,12}
+   
+
+    // glPointSize(10.0);
+    // glBegin(GL_POINTS);
+    // glVertex2d(mX, dinoVerticalPosition);
+    // glEnd();
+    glBegin(GL_LINE_LOOP);
+    //glColor3f(0.0, 0.0, 0.0);
+    for (int i = 0; i < 33; i++)
+    {
+        glVertex2f(tempDinoPoints[0][i], tempDinoPoints[1][i]);
+    }
+    // glVertex2d(6,3);
+    // glVertex2d(6,1);
+    // glVertex2d(7,1);
+    // glVertex2d(7,0);
+    // glVertex2d(5,0);
+    // glVertex2d(5,3);
+    glEnd();
+    //glColor3f(0.0, 0.0, 0.0);
+    glPointSize(5.0);
+    glBegin(GL_POINTS);
+    glVertex2d(tempDinoEye[0], tempDinoEye[1]);
+    glEnd();
+    if(leg_stay_count>1e9)leg_stay_count=0;
+    leg_stay_count++;
+    if (startGame && dinoVerticalPosition <= 0 && dinoRunningLegs)
+    {
+
+        glBegin(GL_POLYGON);
+        glVertex2f(5, 1);
+        glVertex2f(7, 1);
+        glVertex2f(7, 0);
+        glVertex2f(5, 0);
+        glEnd();
+        glBegin(GL_POLYGON);
+        glVertex2f(2, 1);
+        glVertex2f(4, 1);
+        glVertex2f(4, 0);
+        glVertex2f(2, 0);
+        glEnd();
+            dinoRunningLegs = false;
+    }
+    else
+    {
+
+            dinoRunningLegs = true;
+    }
+    // glPushMatrix();
+    // glLoadIdentity();
+    // glTranslatef(0.5, 0.5, 0.0);
+    // glRotatef(25.0, 0.0, 0.0, 1.0);
+    // glutSolidCube(0.5);
+    // glPopMatrix();
+}
+
+float groundDust[2][3] = {{100, 130, 170}, {-2, -2, -2}};
+
+void drawGround()
+{
+    glPointSize(5.0);
+    glBegin(GL_LINES);
+    glVertex2f(-10, 0);
+    glVertex2f(100, 0);
+    glEnd();
+
+    if (groundDust[0][0] < -10)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            groundDust[0][i] = groundDust[0][i + 1];
+        }
+        groundDust[0][2] = 100;
+    }
+    glBegin(GL_POINTS);
+    for (int i = 0; i < 3; i++)
+    {
+        glVertex2f(groundDust[0][i], groundDust[1][i]);
+        glVertex2f(groundDust[0][i] + 2, groundDust[1][i]);
+        glVertex2f(groundDust[0][i] + 1, groundDust[1][i] - 1);
+        groundDust[0][i] += -gameSpeed;
+    }
+    glEnd();
+}
+
+void drawTree()
+{
+
+    if (treePoints[0][12] < -10)
+    {
+        for (int i = 0; i < 16; i++)
+        {
+
+            treePoints[0][i] += 128;
+
+            // treePoints[0][i] += 128;
+            // printf("%.0f,", treePoints[0][i]);
+        }
+        // printf("\n");
+        treeLastPointPosition = 100;
+    }
+    glBegin(GL_POLYGON);
+    glColor3f(0.2, 0.415, 0.184);
+    for (int i = 0; i < 16; i++)
+    {
+        glVertex2f(treePoints[0][i], treePoints[1][i]);
+        treePoints[0][i] += -gameSpeed;
+
+        // treePoints[0][i] += 120;
+        // printf("%.0f,", treePoints[0][i] );
+    }
+    treeLastPointPosition--;
+    glEnd();
+    glColor3f(0.0, 0.0, 0.0);
+    if (treePoints[0][12] <= 13 && treePoints[0][12] >= 0 && dinoVerticalPosition < 13)
+    {
+        // printf("tree inside dragon range value is = %d \n", treeLastPointPosition);
+        // glutPostRedisplay();
+        char *p = (char *)"Game Over press UP arrow to play again";
+        char *u = (char *)"Made By : Jagrit Nokwal, Gaurav Baweja, Mukul Tayal";
+        drawString(30.0, 50.0, 0.0, p);
+        drawString(30.0, 5.0, 0.0, u);
+        
+        // glutIdleFunc(dontDoAnythingIdle);
+        glutTimerFunc(0, myTimerDoNothing, 0);
+        gameRunning = false;
+        startGame = false;
+        resetGame();
+        // return;
+    }
+}
+
+void resetGame()
+{
+    // tempDinoPoints = dinoPoints;
+    memcpy(tempDinoPoints, dinoPoints, sizeof tempDinoPoints);
+    float tempTreePoints[2][16] = {{125, 125, 122, 122, 123, 123, 125, 125, 128, 128, 130, 130, 131, 131, 128, 128},
+                                   {0, 8, 8, 12, 12, 9, 9, 13, 13, 8, 8, 11, 11, 7, 7, 0}};
+    memcpy(treePoints, tempTreePoints, sizeof treePoints);
+    memcpy(tempDinoEye, dinoEye, sizeof tempDinoEye);
+
+    score = 0;
+    gameSpeed = 1;
+}
+ 
+void display()
+{
+    Draw_Figure();
+    drawGround();
+    drawTree();
+    glutSwapBuffers();
+}
+
+int V = 22;
+int gravity = -10;
+
+float VX = V * cos(theta * PI / 180);
+float VY = V * sin(theta * PI / 180);
+float time = 0.1;
+
+void dontDoAnythingIdle()
+{
+}
+void myIdleFunc()
+{
+
+    if (startGame)
+    {
+        jumpFunc();
+        glutPostRedisplay();
+    }
+}
+
+bool jump = false;
+
+void jumpFunc()
+{
+    if (jump)
+    {
+        dinoVerticalPosition = VY * time + 0.5 * (gravity)*time * time;
+        if (dinoVerticalPosition >= 0)
+        {
+            time = time + (0.1) * (gameSpeed);
+            // mX = VX * time;
+
+            // printf("%f--\n\n\n", dinoVerticalPosition);
+            for (int i = 0; i < 33; i++)
+            {
+                tempDinoPoints[1][i] = dinoPoints[1][i] + dinoVerticalPosition;
+
+                // printf("%f----\n", dinoPoints[1][i]);
+            }
+            // tempDinoEye[0] = dinoEye[0]+dinoVerticalPosition;
+            tempDinoEye[1] = dinoEye[1] + dinoVerticalPosition;
+            // glutTimerFunc(timerTime, myTimerDoNothing, 0);
+        }
+        else
+        {
+            memcpy(tempDinoPoints, dinoPoints, sizeof tempDinoPoints);
+            memcpy(tempDinoEye, dinoEye, sizeof tempDinoEye);
+            // glutIdleFunc(dontDoAnythingIdle); // 1 click == 1 jump
+            // glutTimerFunc(timerTime, myTimer, 0);
+            time = 0.1;
+            dinoVerticalPosition = 0;
+            jump = false;
+        }
+    }
+}
+
+void myTimer(int value)
+{
+    // glutIdleFunc(myIdleFunc);
+    if (startGame)
+    {
+        jumpFunc();
+        glutPostRedisplay();
+        if (value % 10 == 0)
+        {
+
+            score += gameSpeed * gameSpeed;
+            max_score = fmax(max_score,score);
+
+            // printf("%d\n",value);
+        }
+        if (value % 100 == 0)
+        {
+            gameSpeed += 0.1;
+        }
+    }
+    glutTimerFunc(timerTime, myTimer, ++value);
+}
+
+void keyDown(int key, int x, int y)
+{
+
+    if (key == GLUT_KEY_UP)
+    {
+        if (startGame)
+        {
+            jump = true;
+            // glutTimerFunc(50, myTimer, 0);
+            // glutIdleFunc(myIdleFunc);
+        }
+        else
+        {
+            startGame = true;
+            gameRunning = true;
+        }
+    }
+}
+
+void myinit() //set attributes
+{
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glColor3f(1.0f, 0.0f, 1.0f);
     glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0.0, 2000, 0.0, 2000);
+    glLoadIdentity();
+    gluOrtho2D(-10, 100, -10, 100);
+    glMatrixMode(GL_MODELVIEW);
 }
 
-int main( int argc , char** argv ){
-    srand(time(NULL)); //Seeds the pseudo-random number generator used by rand() with the value seed.
-    glutInit( &argc, argv );
-    glutInitDisplayMode( GLUT_SINGLE | GLUT_RGBA );
-    glutInitWindowSize( 1230, 650 );
-    glutInitWindowPosition( 50 , 0 );
-    glutCreateWindow("Dinosaur Game!!");
-    setup();
-    glutDisplayFunc(render);
-    glutKeyboardFunc(keyInput);
-    //glutSpecialFunc(specialKeyInput);
+int main(int argc, char **argv)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB); // GLUT_DOUBLE
+    glutInitWindowSize(900, 400);
+    glutInitWindowPosition(100, 100);
 
+    // int wid =GLUT_SCREEN_HEIGHT;
+    // printf("%d",wid);
+
+    glutCreateWindow("Dino Run");
+
+    glutDisplayFunc(display);
+
+    // glutIdleFunc(myIdleFunc);
+    glutTimerFunc(timerTime, myTimer, 0); // mili seconds , myTimer(int value), value
+    // glutKeyboardFunc(myKeyboardFunc); // myKeyboardFunc(unsigned char key , int x , int y)
+    // glutMouseFunc(myMouse); //  myMouse(int button , int state , int x , int y)
+    glutSpecialFunc(keyDown); // keyDown(int key , int x , int y)
+    // glutSpecialUpFunc(keyUp);   // keyUp(int key , int x , int y)
+    // glutPostRedisplay();
+    // glutReshapeFunc(myReshape);
+
+    myinit();
     glutMainLoop();
+    return 0;
 }
