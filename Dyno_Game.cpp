@@ -6,18 +6,15 @@
 
 void drawGround();
 void myTimer(int);
-void myTimerDoNothing(int);
 void jumpFunc();
-void dontDoAnythingIdle();
 void resetGame();
 void drawString();
 void Draw_Figure();
-void drawGround();
 void drawTree();
 
 #define PI 3.1415
 #define theta 90.0f
-
+bool rst=0;
 bool startGame = false;
 bool gameRunning = false;
 int max_score=0;
@@ -32,14 +29,20 @@ float tempDinoPoints[2][33] = {{6, 6, 7, 7, 5, 5, 3, 3, 4, 4, 2, 2, 1.5, -1, 2, 
                                {3, 1, 1, 0, 0, 3, 3, 1, 1, 0, 0, 3, 6, 10, 9, 8, 8, 10, 14.7, 15, 11, 11, 10, 10, 9, 9, 8, 8, 6, 6, 7, 7, 5}};
 float dinoEye[2] = {8, 12};
 float tempDinoEye[2] = {8, 12};
-bool rst=0;
 int treeLastPointPosition = 128;
 float treePoints[2][16] = {{125, 125, 122, 122, 123, 123, 125, 125, 128, 128, 130, 130, 131, 131, 128, 128},
                            {0, 8, 8, 12, 12, 9, 9, 13, 13, 8, 8, 11, 11, 7, 7, 0}};
 int leg_stay_count=0;
 float dinoRunningLegs = false;
+int V = 22;
+int gravity = -10;
+
+float VX = V * cos(theta * PI / 180);
+float VY = V * sin(theta * PI / 180);
+float time = 0.1;
 void myTimerDoNothing(int){
-    
+}
+void dontDoAnythingIdle(){
 }
 void drawString(float x, float y, float z, char *string)
 {
@@ -51,40 +54,102 @@ void drawString(float x, float y, float z, char *string)
     }
 }
 
+void myIdleFunc()
+{
+
+    if (startGame)
+    {
+        jumpFunc();
+        glutPostRedisplay();
+    }
+}
+
+bool jump = false;
+
+void jumpFunc()
+{
+    if (jump)
+    {
+        dinoVerticalPosition = VY * time + 0.5 * (gravity)*time * time;
+        if (dinoVerticalPosition >= 0)
+        {
+            time = time + (0.1) * (gameSpeed);
+
+            for (int i = 0; i < 33; i++)
+                tempDinoPoints[1][i] = dinoPoints[1][i] + dinoVerticalPosition;
+            tempDinoEye[1] = dinoEye[1] + dinoVerticalPosition;
+        }
+        else
+        {
+            memcpy(tempDinoPoints, dinoPoints, sizeof tempDinoPoints);
+            memcpy(tempDinoEye, dinoEye, sizeof tempDinoEye);
+            time = 0.1;
+            dinoVerticalPosition = 0;
+            jump = false;
+        }
+    }
+}
+
+void myTimer(int value)
+{
+    if (startGame)
+    {
+        jumpFunc();
+        glutPostRedisplay();
+        if (value % 10 == 0)
+        {
+            score += gameSpeed * gameSpeed;
+            max_score = fmax(max_score,score);
+        }
+        if (value % 100 == 0)
+        {
+            gameSpeed += 0.1;
+        }
+    }
+    glutTimerFunc(timerTime, myTimer, ++value);
+}
+
+void keyDown(int key, int x, int y)
+{
+    if (key == GLUT_KEY_UP)
+    {
+        if(rst){
+            resetGame();
+            rst=0;
+        }
+        else if (startGame)
+            jump = true;
+        else
+        {
+            startGame = true;
+            gameRunning = true;
+        }
+    }
+}
+
 void Draw_Figure()
 {
     glClear(GL_COLOR_BUFFER_BIT);
     glColor3f(0.0, 0.0, 0.0);
     // Render the text
+    char snum[10];
+    char scoreString2[30] = "Max Score :: ";
+    snprintf(snum, sizeof(snum), "%d", max_score);
+    strcat(scoreString2, snum);
+    drawString(70.0, 90.0, 0.0, scoreString2);
+    char scoreString[30] = "Score :: ";
+    snprintf(snum, sizeof(snum), "%d", score);
+    strcat(scoreString, snum);
+    drawString(70.0, 80.0, 0.0, scoreString);
     if (!startGame)
     {
-        char snum[10];
-        char scoreString2[30] = "Max Score :: ";
-        snprintf(snum, sizeof(snum), "%d", max_score);
-        strcat(scoreString2, snum);
-        drawString(70.0, 90.0, 0.0, scoreString2);
-        char scoreString[30] = "Score :: ";
-        snprintf(snum, sizeof(snum), "%d", score);
-        strcat(scoreString, snum);
-        drawString(70.0, 80.0, 0.0, scoreString);
         char *p = (char *)"Press Up Arrow to start game";
         char *u = (char *)"Made By : Jagrit Nokwal, Gaurav Baweja, Mukul Tayal";
-        drawString(30.0, 50.0, 0.0, p);
+        drawString(30.0, 40.0, 0.0, p);
         drawString(30.0, 5.0, 0.0, u);
         rst=0;
     }
-    else
-    {
-        char snum[10];
-        char scoreString2[30] = "Max Score :: ";
-        snprintf(snum, sizeof(snum), "%d", max_score);
-        strcat(scoreString2, snum);
-        drawString(70.0, 90.0, 0.0, scoreString2);
-        char scoreString[30] = "Score :: ";
-        snprintf(snum, sizeof(snum), "%d", score);
-        strcat(scoreString, snum);
-        drawString(70.0, 80.0, 0.0, scoreString);
-    }
+    //Draw Dragon
     glBegin(GL_LINE_LOOP);
     for (int i = 0; i < 33; i++)
         glVertex2f(tempDinoPoints[0][i], tempDinoPoints[1][i]);
@@ -103,6 +168,7 @@ void Draw_Figure()
         glVertex2f(7, 0);
         glVertex2f(5, 0);
         glEnd();
+        
         glBegin(GL_POLYGON);
         glVertex2f(2, 1);
         glVertex2f(4, 1);
@@ -163,18 +229,21 @@ void drawTree()
     treeLastPointPosition--;
     glEnd();
     glColor3f(0.0, 0.0, 0.0);
-    if (treePoints[0][12] <= 13 && treePoints[0][12] >= 0 && dinoVerticalPosition < 13)
+    //Collision
+    if (treePoints[0][7] <= 13 && treePoints[0][7] >= 0 && dinoVerticalPosition < 13)
     {
 
-        char *p = (char *)"Game Over press UP arrow to play again";
+        char *p = (char *)"Game Over";
         char *u = (char *)"Made By : Jagrit Nokwal, Gaurav Baweja, Mukul Tayal";
         drawString(30.0, 50.0, 0.0, p);
         drawString(30.0, 5.0, 0.0, u);
         glutTimerFunc(0, myTimerDoNothing, 0);
         gameRunning = false;
         startGame = false;
-        resetGame();
+        rst = 1;
+        //resetGame();
     }
+    
 }
 
 void resetGame()
@@ -197,85 +266,6 @@ void display()
     glutSwapBuffers();
 }
 
-int V = 22;
-int gravity = -10;
-
-float VX = V * cos(theta * PI / 180);
-float VY = V * sin(theta * PI / 180);
-float time = 0.1;
-
-void dontDoAnythingIdle()
-{
-}
-void myIdleFunc()
-{
-
-    if (startGame)
-    {
-        jumpFunc();
-        glutPostRedisplay();
-    }
-}
-
-bool jump = false;
-
-void jumpFunc()
-{
-    if (jump)
-    {
-        dinoVerticalPosition = VY * time + 0.5 * (gravity)*time * time;
-        if (dinoVerticalPosition >= 0)
-        {
-            time = time + (0.1) * (gameSpeed);
-
-            for (int i = 0; i < 33; i++)
-                tempDinoPoints[1][i] = dinoPoints[1][i] + dinoVerticalPosition;
-            tempDinoEye[1] = dinoEye[1] + dinoVerticalPosition;
-        }
-        else
-        {
-            memcpy(tempDinoPoints, dinoPoints, sizeof tempDinoPoints);
-            memcpy(tempDinoEye, dinoEye, sizeof tempDinoEye);
-            time = 0.1;
-            dinoVerticalPosition = 0;
-            jump = false;
-        }
-    }
-}
-
-void myTimer(int value)
-{
-    if (startGame)
-    {
-        jumpFunc();
-        glutPostRedisplay();
-        if (value % 10 == 0)
-        {
-            score += gameSpeed * gameSpeed;
-            max_score = fmax(max_score,score);
-        }
-        if (value % 100 == 0)
-        {
-            gameSpeed += 0.1;
-        }
-    }
-    glutTimerFunc(timerTime, myTimer, ++value);
-}
-
-void keyDown(int key, int x, int y)
-{
-    if (key == GLUT_KEY_UP)
-    {
-        if (startGame)
-            jump = true;
-        else
-        {
-            startGame = true;
-            gameRunning = true;
-        }
-    }
-}
-
 void myinit() //set attributes
 {
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -291,8 +281,8 @@ int main(int argc, char **argv)
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB); // GLUT_DOUBLE
     glutInitWindowSize(900, 400);
-    glutInitWindowPosition(100, 100);\
-    glutCreateWindow("Dino Run");
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("T.Rex Run");
     glutDisplayFunc(display);
     glutTimerFunc(timerTime, myTimer, 0); // mili seconds , myTimer(int value), value
     glutSpecialFunc(keyDown); // keyDown(int key , int x , int y)
